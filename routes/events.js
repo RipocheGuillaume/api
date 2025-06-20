@@ -77,30 +77,32 @@ router.post("/", async (req, res) => {
 });
 
 router.post("/:eventId/rsvps", async (req, res) => {
-  if (!req.body) {
-    return res.status(400).json({ error: "Missing request body" });
-  }
   const { status, response_date, notes } = req.body;
   const eventId = parseInt(req.params.eventId, 10);
   const userId = 1;
-
-  if (!status || !response_date || isNaN(eventId)) {
-    return res.status(400).json({ error: "Missing or invalid fields" });
-  }
 
   try {
     const result = await pool.query(
       `INSERT INTO EventRSVPs (status, response_date, notes, event_id, user_id)
        VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (event_id, user_id) DO UPDATE
-       SET status = EXCLUDED.status,
-           response_date = EXCLUDED.response_date,
-           notes = EXCLUDED.notes,
-           updated_at = CURRENT_TIMESTAMP
        RETURNING *`,
       [status, response_date, notes, eventId, userId]
     );
     res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+//update rsvp
+router.put("/:eventId/rsvps/:id", async (req, res) => {
+  const { status, notes } = req.body;
+  try {
+    const result = await pool.query(
+      `UPDATE EventRSVPs SET status = $1, notes = $2 WHERE id = $3 RETURNING *`,
+      [status, notes, req.params.id]
+    );
+    res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
